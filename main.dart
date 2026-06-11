@@ -47,12 +47,150 @@ class _SalesPageState extends State<SalesPage> {
     'অন্যান্য খাত (নিচে লিখুন)'
   ];
 
+  List<Map<String, dynamic>> savedSalesList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    voriController.addListener(_calculateGramAndWages);
+    anaController.addListener(_calculateGramAndWages);
+    ratiController.addListener(_calculateGramAndWages);
+    pointController.addListener(_calculateGramAndWages);
+    voriWagesController.addListener(_calculateGramAndWages);
+  }
+
+  void _calculateGramAndWages() {
+    double vori = double.tryParse(voriController.text) ?? 0;
+    double ana = double.tryParse(anaController.text) ?? 0;
+    double rati = double.tryParse(ratiController.text) ?? 0;
+    double point = double.tryParse(pointController.text) ?? 0;
+    double voriWages = double.tryParse(voriWagesController.text) ?? 0;
+
+    double totalVori = vori + (ana / 16) + (rati / (16 * 6)) + (point / (16 * 6 * 10));
+    double totalGram = totalVori * 11.664;
+    double totalWages = totalVori * voriWages;
+
+    if (gramController.text != totalGram.toStringAsFixed(3)) {
+      gramController.text = totalGram > 0 ? totalGram.toStringAsFixed(3) : '';
+    }
+    if (totalWagesController.text != totalWages.toStringAsFixed(2)) {
+      totalWagesController.text = totalWages > 0 ? totalWages.toStringAsFixed(2) : '';
+    }
+  }
+
+  void _showUploadMessage(String title) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$title আপলোড করার জন্য ইমেজ পিকার লাইব্রেরি কোডে যুক্ত করতে হবে।')),
+    );
+  }
+
+  void _submitDataAndCreateMemo() {
+    if (phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('অনুগ্রহ করে মোবাইল নাম্বারটি লিখুন!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    Map<String, dynamic> newSale = {
+      'name': nameController.text,
+      'address': addressController.text,
+      'phone': phoneController.text,
+      'weight': '${voriController.text} ভরি, ${anaController.text} আনা, ${ratiController.text} রতি',
+      'gram': gramController.text,
+      'rate': rateController.text,
+      'wages': totalWagesController.text,
+      'khath': selectedKhath == 'অন্যান্য খাত (নিচে লিখুন)' ? customKhathController.text : selectedKhath,
+      'date': DateTime.now().toString().substring(0, 16),
+    };
+
+    setState(() {
+      savedSalesList.add(newSale);
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('মেমো তৈরি সফল হয়েছে!'),
+        content: Text('ক্রেতা: ${nameController.text}\nমোবাইল: ${phoneController.text}\nমোট ওজন: ${gramController.text} গ্রাম\n\nতথ্যটি লোকাল লিস্টে জমা হয়েছে।'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _clearForm();
+            },
+            child: Text('ঠিক আছে'),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _clearForm() {
+    nameController.clear();
+    addressController.clear();
+    phoneController.clear();
+    voriController.clear();
+    anaController.clear();
+    ratiController.clear();
+    pointController.clear();
+    gramController.clear();
+    rateController.clear();
+    voriWagesController.clear();
+    totalWagesController.clear();
+    customKhathController.clear();
+  }
+
+  void _viewSavedList() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: Text('বিক্রয় ও মেমো তালিকা'), backgroundColor: Colors.amber),
+          body: savedSalesList.isEmpty
+              ? Center(child: Text('এখনো কোনো মেমো তৈরি করা হয়নি!'))
+              : ListView.builder(
+                  itemCount: savedSalesList.length,
+                  itemBuilder: (context, index) {
+                    final item = savedSalesList[index];
+                    return Card(
+                      margin: EdgeInsets.all(8),
+                      child: ListTile(
+                        title: Text('ক্রেতা: ${item['name']} (${item['phone']})'),
+                        subtitle: Text('ওজন: ${item['gram']} গ্রাম | খাত: ${item['khath']}\nতারিখ: ${item['date']}'),
+                        trailing: Icon(Icons.receipt_long, color: Colors.amber),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    voriController.dispose();
+    anaController.dispose();
+    ratiController.dispose();
+    pointController.dispose();
+    voriWagesController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('জুয়েলারি বিক্রয় ও হিসাব', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.amber,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.list_alt, color: Colors.white),
+            onPressed: _viewSavedList,
+            tooltip: 'সব মেমো লিস্ট দেখুন',
+          )
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16.0),
@@ -77,13 +215,13 @@ class _SalesPageState extends State<SalesPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => _showUploadMessage('পণ্যের ছবি'),
                   icon: Icon(Icons.camera_alt, color: Colors.white),
                   label: Text('পণ্যের ছবি', style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => _showUploadMessage('বিক্রেতার আইডি'),
                   icon: Icon(Icons.credit_card, color: Colors.white),
                   label: Text('বিক্রেতার আইডি', style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
@@ -103,42 +241,8 @@ class _SalesPageState extends State<SalesPage> {
                 SizedBox(width: 4),
                 Expanded(child: TextField(controller: pointController, decoration: InputDecoration(labelText: 'পয়েন্ট', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
                 SizedBox(width: 4),
-                Expanded(child: TextField(controller: gramController, decoration: InputDecoration(labelText: 'গ্রাম', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                Expanded(child: TextField(controller: gramController, readOnly: true, decoration: InputDecoration(labelText: 'গ্রাম', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
               ],
             ),
             SizedBox(height: 15),
             TextField(controller: rateController, decoration: InputDecoration(labelText: 'সোনার দর (প্রতি ভরি)', prefixIcon: Icon(Icons.monetization_on)), keyboardType: TextInputType.number),
-            TextField(controller: voriWagesController, decoration: InputDecoration(labelText: 'ভরি প্রতি মজুরি', prefixIcon: Icon(Icons.add_task)), keyboardType: TextInputType.number),
-            TextField(controller: totalWagesController, decoration: InputDecoration(labelText: 'মোট মজুরি', prefixIcon: Icon(Icons.calculate)), keyboardType: TextInputType.number),
-            SizedBox(height: 20),
-            Text('বিক্রয়ের খাত সিলেক্ট করুন:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            DropdownButton<String>(
-              value: selectedKhath,
-              isExpanded: true,
-              items: khathOptions.map((String value) {
-                return DropdownMenuItem<String>(value: value, child: Text(value));
-              }).toList(),
-              onChanged: (newValue) {
-                setState(() { selectedKhath = newValue!; });
-              },
-            ),
-            if (selectedKhath == 'অন্যান্য খাত (নিচে লিখুন)')
-              TextField(controller: customKhathController, decoration: InputDecoration(labelText: 'নতুন খাতের নাম লিখুন')),
-            SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-                onPressed: () {},
-                child: Padding(
-                  padding: EdgeInsets.all(12.0),
-                  child: Text('বিক্রয় নিশ্চিত করুন ও মেমো তৈরি করুন', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
