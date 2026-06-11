@@ -8,10 +8,16 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - run: flutter pub get
-      - run: flutter build apk --split-per-abi
+      - name: Create Fresh Flutter Project
+        run: |
+          cd ..
+          flutter create fresh_app --org com.jewelry.shop
+          cp $GITHUB_WORKSPACE/main.dart fresh_app/lib/main.dart
+          cd fresh_app
+          flutter build apk --split-per-abi
+          cp build/app/outputs/flutter-apk/app-release.apk $GITHUB_WORKSPACE/app-release.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: jewelry-shop-app
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: app-release.apk
