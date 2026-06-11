@@ -15,7 +15,7 @@ jobs:
           cp $GITHUB_WORKSPACE/main.dart fresh_app/lib/main.dart
           cd fresh_app
           flutter build apk --split-per-abi
-          cp build/app/outputs/flutter-apk/app-release.apk $GITHUB_WORKSPACE/app-release.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk $GITHUB_WORKSPACE/app-release.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
