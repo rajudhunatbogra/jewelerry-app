@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 void main() {
   runApp(MyApp());
@@ -30,6 +31,7 @@ class _SalesPageState extends State<SalesPage> {
   final TextEditingController rateController = TextEditingController();
   final TextEditingController totalWagesController = TextEditingController();
   final TextEditingController voriWagesController = TextEditingController();
+  final TextEditingController fixedWagesController = TextEditingController();
   final TextEditingController customKhathController = TextEditingController();
 
   final TextEditingController voriController = TextEditingController();
@@ -48,6 +50,22 @@ class _SalesPageState extends State<SalesPage> {
   ];
 
   List<Map<String, dynamic>> savedSalesList = [];
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage(String type) async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$type সফলভাবে নির্বাচন করা হয়েছে!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$type আপলোড করার জন্য সিস্টেমে সমস্যা হচ্ছে।')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -57,6 +75,7 @@ class _SalesPageState extends State<SalesPage> {
     ratiController.addListener(_calculateGramAndWages);
     pointController.addListener(_calculateGramAndWages);
     voriWagesController.addListener(_calculateGramAndWages);
+    fixedWagesController.addListener(_calculateGramAndWages);
   }
 
   void _calculateGramAndWages() {
@@ -65,10 +84,11 @@ class _SalesPageState extends State<SalesPage> {
     double rati = double.tryParse(ratiController.text) ?? 0;
     double point = double.tryParse(pointController.text) ?? 0;
     double voriWages = double.tryParse(voriWagesController.text) ?? 0;
+    double fixedWages = double.tryParse(fixedWagesController.text) ?? 0;
 
     double totalVori = vori + (ana / 16) + (rati / (16 * 6)) + (point / (16 * 6 * 10));
     double totalGram = totalVori * 11.664;
-    double totalWages = totalVori * voriWages;
+    double totalWages = (totalVori * voriWages) + fixedWages;
 
     if (gramController.text != totalGram.toStringAsFixed(3)) {
       gramController.text = totalGram > 0 ? totalGram.toStringAsFixed(3) : '';
@@ -76,12 +96,6 @@ class _SalesPageState extends State<SalesPage> {
     if (totalWagesController.text != totalWages.toStringAsFixed(2)) {
       totalWagesController.text = totalWages > 0 ? totalWages.toStringAsFixed(2) : '';
     }
-  }
-
-  void _showUploadMessage(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$title আপলোড করার জন্য ইমেজ পিকার লাইব্রেরি কোডে যুক্ত করতে হবে।')),
-    );
   }
 
   void _submitDataAndCreateMemo() {
@@ -112,7 +126,7 @@ class _SalesPageState extends State<SalesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('মেমো তৈরি সফল হয়েছে!'),
-        content: Text('ক্রেতা: ${nameController.text}\nমোবাইল: ${phoneController.text}\nমোট ওজন: ${gramController.text} গ্রাম\n\nতথ্যটি লোকাল লিস্টে জমা হয়েছে।'),
+        content: Text('ক্রেতা: ${nameController.text}\nমোবাইল: ${phoneController.text}\nমোট ওজন: ${gramController.text} গ্রাম\nমোট মজুরি: ৳${totalWagesController.text}\n\nতথ্যটি সেভ হয়েছে। ওপরের লিস্ট আইকন থেকে দেখতে পারবেন।'),
         actions: [
           TextButton(
             onPressed: () {
@@ -137,6 +151,7 @@ class _SalesPageState extends State<SalesPage> {
     gramController.clear();
     rateController.clear();
     voriWagesController.clear();
+    fixedWagesController.clear();
     totalWagesController.clear();
     customKhathController.clear();
   }
@@ -157,7 +172,7 @@ class _SalesPageState extends State<SalesPage> {
                       margin: EdgeInsets.all(8),
                       child: ListTile(
                         title: Text('ক্রেতা: ${item['name']} (${item['phone']})'),
-                        subtitle: Text('ওজন: ${item['gram']} গ্রাম | খাত: ${item['khath']}\nতারিখ: ${item['date']}'),
+                        subtitle: Text('ওজন: ${item['gram']} গ্রাম | মজুরি: ৳${item['wages']}\nখাত: ${item['khath']} | তারিখ: ${item['date']}'),
                         trailing: Icon(Icons.receipt_long, color: Colors.amber),
                       ),
                     );
@@ -170,11 +185,19 @@ class _SalesPageState extends State<SalesPage> {
 
   @override
   void dispose() {
+    nameController.dispose();
+    addressController.dispose();
+    phoneController.dispose();
+    rateController.dispose();
+    totalWagesController.dispose();
+    voriWagesController.dispose();
+    fixedWagesController.dispose();
+    customKhathController.dispose();
     voriController.dispose();
     anaController.dispose();
     ratiController.dispose();
     pointController.dispose();
-    voriWagesController.dispose();
+    gramController.dispose();
     super.dispose();
   }
 
@@ -214,35 +237,29 @@ class _SalesPageState extends State<SalesPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _showUploadMessage('পণ্যের ছবি'),
-                  icon: Icon(Icons.camera_alt, color: Colors.white),
-                  label: Text('পণ্যের ছবি', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _pickImage('পণ্যের ছবি'),
+                    icon: Icon(Icons.camera_alt, color: Colors.white),
+                    label: Text('পণ্যের ছবি', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => _showUploadMessage('বিক্রেতার আইডি'),
-                  icon: Icon(Icons.credit_card, color: Colors.white),
-                  label: Text('বিক্রেতার আইডি', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _pickImage('বিক্রেতার আইডি'),
+                    icon: Icon(Icons.credit_card, color: Colors.white),
+                    label: Text('বিক্রেতার আইডি', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  ),
                 ),
-              ],
-            ),
-            SizedBox(height: 20),
-            Text('পণ্যের ওজন হিসাব:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            SizedBox(height: 5),
-            Row(
-              children: [
-                Expanded(child: TextField(controller: voriController, decoration: InputDecoration(labelText: 'ভরি', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-                SizedBox(width: 4),
-                Expanded(child: TextField(controller: anaController, decoration: InputDecoration(labelText: 'আনা', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-                SizedBox(width: 4),
-                Expanded(child: TextField(controller: ratiController, decoration: InputDecoration(labelText: 'রতি', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-                SizedBox(width: 4),
-                Expanded(child: TextField(controller: pointController, decoration: InputDecoration(labelText: 'পয়েন্ট', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-                SizedBox(width: 4),
-                Expanded(child: TextField(controller: gramController, readOnly: true, decoration: InputDecoration(labelText: 'গ্রাম', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
               ],
             ),
             SizedBox(height: 15),
-            TextField(controller: rateController, decoration: InputDecoration(labelText: 'সোনার দর (প্রতি ভরি)', prefixIcon: Icon(Icons.monetization_on)), keyboardType: TextInputType.number),
+            Text('পণ্যের ওজন হিসাব:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            SizedBox(height: 5),
+            Row(
+              children: [
+                Expanded(child: TextField(controller: voriController, decoration: InputDecoration(border: OutlineInputBorder(), labelText: 'ভরি'), keyboardType: TextInputType.number)),
+                SizedBox(width: 4),
