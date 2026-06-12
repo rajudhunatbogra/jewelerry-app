@@ -25,32 +25,25 @@ jobs:
         flutter-version: '3.19.0'
         channel: 'stable'
 
-    - name: Find Project and Install Dependencies
+    - name: Auto Generate Missing Project Files
       run: |
-        if [ -f pubspec.yaml ]; then
-          flutter pub get
-        else
-          # যদি কোনো সাব-ফোল্ডারে থাকে তবে সেটি খুঁজে বের করে কাজ করবে
-          PROJECT_DIR=$(find . -maxdepth 2 -name "pubspec.yaml" -exec dirname {} \;)
-          echo "Project found in: $PROJECT_DIR"
-          cd $PROJECT_DIR
-          flutter pub get
+        # হারিয়ে যাওয়া সব ফাইল ও ফোল্ডার অটোমেটিক তৈরি করার স্ক্রিপ্ট
+        mkdir -p temp_lib
+        if [ -f main.dart ]; then
+          mv main.dart temp_lib/main.dart
         fi
+        flutter create --org com.example --project-name jewellery_app . --overwrite
+        rm -rf lib
+        mv temp_lib lib
+        
+    - name: Install dependencies
+      run: flutter pub get
 
     - name: Build APK
-      run: |
-        if [ -f pubspec.yaml ]; then
-          flutter build apk --release
-        else
-          PROJECT_DIR=$(find . -maxdepth 2 -name "pubspec.yaml" -exec dirname {} \;)
-          cd $PROJECT_DIR
-          flutter build apk --release
-        fi
+      run: flutter build apk --release
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: jewelry-shop-app
-        path: |
-          build/app/outputs/flutter-apk/app-release.apk
-          **/build/app/outputs/flutter-apk/app-release.apk
+        path: build/app/outputs/flutter-apk/app-release.apk
