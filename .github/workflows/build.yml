@@ -25,14 +25,32 @@ jobs:
         flutter-version: '3.19.0'
         channel: 'stable'
 
-    - name: Install dependencies
-      run: flutter pub get
+    - name: Find Project and Install Dependencies
+      run: |
+        if [ -f pubspec.yaml ]; then
+          flutter pub get
+        else
+          # যদি কোনো সাব-ফোল্ডারে থাকে তবে সেটি খুঁজে বের করে কাজ করবে
+          PROJECT_DIR=$(find . -maxdepth 2 -name "pubspec.yaml" -exec dirname {} \;)
+          echo "Project found in: $PROJECT_DIR"
+          cd $PROJECT_DIR
+          flutter pub get
+        fi
 
     - name: Build APK
-      run: flutter build apk --release
+      run: |
+        if [ -f pubspec.yaml ]; then
+          flutter build apk --release
+        else
+          PROJECT_DIR=$(find . -maxdepth 2 -name "pubspec.yaml" -exec dirname {} \;)
+          cd $PROJECT_DIR
+          flutter build apk --release
+        fi
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: jewelry-shop-app
-        path: build/app/outputs/flutter-apk/app-release.apk
+        path: |
+          build/app/outputs/flutter-apk/app-release.apk
+          **/build/app/outputs/flutter-apk/app-release.apk
