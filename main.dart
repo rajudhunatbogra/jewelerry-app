@@ -52,7 +52,7 @@ class _SalesPageState extends State<SalesPage> {
 
   void _showUploadMessage(String type) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$type আপলোড ফিচারটি সচল করতে pubspec.yaml ফাইলে image_picker যোগ করতে হবে।')),
+      SnackBar(content: Text('$type আপলোড ফিচারটি সচল করতে সিস্টেমে কাজ করা হচ্ছে।')),
     );
   }
 
@@ -255,3 +255,4 @@ class _SalesPageState extends State<SalesPage> {
                 Expanded(child: TextField(controller: anaController, decoration: InputDecoration(border: OutlineInputBorder(), labelText: 'আনা'), keyboardType: TextInputType.number)),
                 SizedBox(width: 4),
                 Expanded(child: TextField(controller: ratiController, decoration: InputDecoration(border: OutlineInputBorder(), labelText: 'রতি'), keyboardType: TextInputType.number)),
+                SizedBox(width: 4),
