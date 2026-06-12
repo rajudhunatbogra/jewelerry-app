@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 void main() {
   runApp(MyApp());
@@ -50,21 +49,11 @@ class _SalesPageState extends State<SalesPage> {
   ];
 
   List<Map<String, dynamic>> savedSalesList = [];
-  final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickImage(String type) async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$type সফলভাবে নির্বাচন করা হয়েছে!')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$type আপলোড করার জন্য সিস্টেমে সমস্যা হচ্ছে।')),
-      );
-    }
+  void _showUploadMessage(String type) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$type আপলোড ফিচারটি সচল করতে pubspec.yaml ফাইলে image_picker যোগ করতে হবে।')),
+    );
   }
 
   @override
@@ -239,7 +228,7 @@ class _SalesPageState extends State<SalesPage> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _pickImage('পণ্যের ছবি'),
+                    onPressed: () => _showUploadMessage('পণ্যের ছবি'),
                     icon: Icon(Icons.camera_alt, color: Colors.white),
                     label: Text('পণ্যের ছবি', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
@@ -248,7 +237,7 @@ class _SalesPageState extends State<SalesPage> {
                 SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _pickImage('বিক্রেতার আইডি'),
+                    onPressed: () => _showUploadMessage('বিক্রেতার আইডি'),
                     icon: Icon(Icons.credit_card, color: Colors.white),
                     label: Text('বিক্রেতার আইডি', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
@@ -263,3 +252,6 @@ class _SalesPageState extends State<SalesPage> {
               children: [
                 Expanded(child: TextField(controller: voriController, decoration: InputDecoration(border: OutlineInputBorder(), labelText: 'ভরি'), keyboardType: TextInputType.number)),
                 SizedBox(width: 4),
+                Expanded(child: TextField(controller: anaController, decoration: InputDecoration(border: OutlineInputBorder(), labelText: 'আনা'), keyboardType: TextInputType.number)),
+                SizedBox(width: 4),
+                Expanded(child: TextField(controller: ratiController, decoration: InputDecoration(border: OutlineInputBorder(), labelText: 'রতি'), keyboardType: TextInputType.number)),
