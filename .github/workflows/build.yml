@@ -1,247 +1,38 @@
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+name: Flutter Build
 
-void main() {
-  runApp(MyApp());
-}
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'জুয়েলারি বিক্রয় ও হিসাব',
-      theme: ThemeData(
-        primaryColor: Colors.amber,
-      ),
-      home: SalesPage(),
-    );
-  }
-}
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-class SalesPage extends StatefulWidget {
-  @override
-  _SalesPageState createState() => _SalesPageState();
-}
+    steps:
+    - uses: actions/checkout@v3
 
-class _SalesPageState extends State<SalesPage> {
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController addressController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController rateController = TextEditingController();
-  final TextEditingController totalWagesController = TextEditingController();
-  final TextEditingController voriWagesController = TextEditingController();
-  final TextEditingController customKhathController = TextEditingController();
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
 
-  final TextEditingController voriController = TextEditingController();
-  final TextEditingController anaController = TextEditingController();
-  final TextEditingController ratiController = TextEditingController();
-  final TextEditingController pointController = TextEditingController();
-  final TextEditingController gramController = TextEditingController();
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.19.0'
+        channel: 'stable'
 
-  String selectedKhath = 'উৎপাদিত নতুন গহনা';
-  final List<String> khathOptions = [
-    'উৎপাদিত নতুন গহনা',
-    'কেনা নতুন গহনা',
-    'পুরাতন গহনা',
-    'বন্ধকী গহনা',
-    'অন্যান্য খাত (নিচে লিখুন)'
-  ];
+    - name: Install dependencies
+      run: flutter pub get
 
-  // ছবি আপলোডের জন্য ভেরিয়েবল
-  File? productImage;
-  File? idCardImage;
-  final ImagePicker _picker = ImagePicker();
+    - name: Build APK
+      run: flutter build apk --release
 
-  @override
-  void initState() {
-    super.initState();
-    // ইনপুট ফিল্ডগুলোতে লিসেনার যুক্ত করা যাতে টাইপ করার সাথে সাথে হিসাব হয়
-    voriController.addListener(_calculateGram);
-    anaController.addListener(_calculateGram);
-    ratiController.addListener(_calculateGram);
-    pointController.addListener(_calculateGram);
-  }
-
-  // ১. ভরি, আনা, রতি, পয়েন্ট থেকে গ্রামে রূপান্তরের লজিক
-  void _calculateGram() {
-    double vori = double.tryParse(voriController.text) ?? 0.0;
-    double ana = double.tryParse(anaController.text) ?? 0.0;
-    double rati = double.tryParse(ratiController.text) ?? 0.0;
-    double point = double.tryParse(pointController.text) ?? 0.0;
-
-    if (vori == 0 && ana == 0 && rati == 0 && point == 0) {
-      return; // সব ঘর খালি থাকলে গ্রাম পরিবর্তন করবে না
-    }
-
-    // মোট ভরি হিসাব: ১ ভরি = ১৬ আনা, ১ আনা = ৬ রতি (অর্থাৎ ১ ভরি = ৯৬ রতি), ১ রতি = ১০ পয়েন্ট (অর্থাৎ ১ ভরি = ৯৬০ পয়েন্ট)
-    double totalVori = vori + (ana / 16.0) + (rati / 96.0) + (point / 960.0);
-    
-    // ১ ভরি = ১১.৬৬৪ গ্রাম
-    double totalGram = totalVori * 11.664;
-
-    // টেক্সট ফিল্ডে অটোমেটিক মান বসানো (দশমিকের পর ৩ ঘর পর্যন্ত)
-    gramController.text = totalGram.toStringAsFixed(3);
-  }
-
-  // ২. ছবি আপলোড করার ফাংশন
-  Future<void> _pickImage(bool isProduct) async {
-    try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: ImageSource.gallery, // গ্যালারি থেকে ছবি নিতে
-        imageQuality: 80,
-      );
-      if (pickedFile != null) {
-        setState(() {
-          if (isProduct) {
-            productImage = File(pickedFile.path);
-          } else {
-            idCardImage = File(pickedFile.path);
-          }
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ছবি আপলোড করতে সমস্যা হয়েছে: $e')),
-      );
-    }
-  }
-
-  // ৩. মেমো তৈরি এবং ডাটা স্ক্রিনে দেখার ফাংশন
-  void _showMemo() {
-    String finalKhath = selectedKhath == 'অন্যান্য খাত (নিচে লিখুন)' 
-        ? customKhathController.text 
-        : selectedKhath;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('বিক্রয় মেমো (রশিদ)', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: [
-                Text('ক্রেতার নাম: ${nameController.text}'),
-                Text('ঠিকানা: ${addressController.text}'),
-                Text('মোবাইল: ${phoneController.text}'),
-                Divider(),
-                Text('ওজন (ভরি): ${voriController.text} ভরি, ${anaController.text} আনা, ${ratiController.text} রতি, ${pointController.text} পয়েন্ট'),
-                Text('ওজন (গ্রাম): ${gramController.text} গ্রাম'),
-                Text('সোনার দর: ${rateController.text} টাকা'),
-                Text('মোট মজুরি: ${totalWagesController.text} টাকা'),
-                Text('বিক্রয়ের খাত: $finalKhath'),
-                Divider(),
-                Text('পণ্যের ছবি ফাইল: ${productImage != null ? "আপলোড হয়েছে" : "নাই"}'),
-                Text('আইডি কার্ড ফাইল: ${idCardImage != null ? "আপলোড হয়েছে" : "নাই"}'),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: Text('বন্ধ করুন'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    // মেমোরি লিক রোধ করতে কন্ট্রোলারগুলো ডিসপোজ করা
-    voriController.dispose();
-    anaController.dispose();
-    ratiController.dispose();
-    pointController.dispose();
-    gramController.dispose();
-    nameController.dispose();
-    addressController.dispose();
-    phoneController.dispose();
-    rateController.dispose();
-    totalWagesController.dispose();
-    voriWagesController.dispose();
-    customKhathController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('জুয়েলারি বিক্রয় ও হিসাব', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.amber,
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              elevation: 4,
-              child: Padding(
-                padding: EdgeInsets.all(12.0),
-                child: Column(
-                  children: [
-                    TextField(controller: nameController, decoration: InputDecoration(labelText: 'ক্রেতার নাম', icon: Icon(Icons.person))),
-                    TextField(controller: addressController, decoration: InputDecoration(labelText: 'ঠিকানা', icon: Icon(Icons.location_on))),
-                    TextField(controller: phoneController, decoration: InputDecoration(labelText: 'মোবাইল নাম্বার', icon: Icon(Icons.phone)), keyboardType: TextInputType.phone),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: 15),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () => _pickImage(true),
-                        icon: Icon(Icons.camera_alt, color: Colors.white),
-                        label: Text('পণ্যের ছবি', style: TextStyle(color: Colors.white)),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                      ),
-                      if (productImage != null) 
-                        Text('ছবি যুক্ত হয়েছে', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () => _pickImage(false),
-                        icon: Icon(Icons.credit_card, color: Colors.white),
-                        label: Text('বিক্রেতার আইডি', style: TextStyle(color: Colors.white)),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                      ),
-                      if (idCardImage != null) 
-                        Text('আইডি যুক্ত হয়েছে', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            Text('পণ্যের ওজন হিসাব:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            SizedBox(height: 5),
-            Row(
-              children: [
-                Expanded(child: TextField(controller: voriController, decoration: InputDecoration(labelText: 'ভরি', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-                SizedBox(width: 4),
-                Expanded(child: TextField(controller: anaController, decoration: InputDecoration(labelText: 'আনা', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-                SizedBox(width: 4),
-                Expanded(child: TextField(controller: ratiController, decoration: InputDecoration(labelText: 'রতি', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-                SizedBox(width: 4),
-                Expanded(child: TextField(controller: pointController, decoration: InputDecoration(labelText: 'পয়েন্ট', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-                SizedBox(width: 4),
-                Expanded(child: TextField(controller: gramController, decoration: InputDecoration(labelText: 'গ্রাম', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
-              ],
-            ),
-            SizedBox(height: 15),
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: jewelry-shop-app
+        path: build/app/outputs/flutter-apk/app-release.apk
